@@ -7,7 +7,7 @@
 // API clients
 #include "api/netatmo_client.h"
 #include "api/meteo_client.h"
-#include "api/gemini_client.h"
+#include "api/sunmoon_client.h"
 
 // Display
 #include "display/widgets.h"
@@ -30,7 +30,7 @@ TFT_eSprite display = TFT_eSprite(&tft);
 
 NetatmoClient netatmoClient;
 MeteoClient meteoClient;
-GeminiClient geminiClient;
+SunMoonClient sunMoonClient;
 
 // Function prototypes
 bool connectWiFi();
@@ -110,6 +110,12 @@ void setup() {
     DashboardData dashboardData;
     bool dataAvailable = false;
 
+    // CRITICAL: Load cache FIRST to preserve sun data across daily updates
+    // Sun data only updates when date changes, so we need cached values
+    // to remain in dashboardData when getSunData() skips the API call
+    ESP_LOGI("main", "Loading previous data from cache");
+    DataCache::load(dashboardData);  // Ignore return value, just load what we can
+
     // Connect WiFi
     if (connectWiFi()) {
         // Sync time if needed
@@ -121,7 +127,7 @@ void setup() {
             }
         }
 
-        // Fetch fresh weather data
+        // Fetch fresh weather data (updates only what needs updating)
         if (fetchWeatherData(dashboardData)) {
             ESP_LOGI("main", "Weather data fetched successfully");
 
@@ -140,9 +146,9 @@ void setup() {
     // CRITICAL: Disconnect WiFi before display operations
     disconnectWiFi();
 
-    // If fresh data not available, try to load from cache
+    // If fresh data not available, try to use cached data
     if (!dataAvailable) {
-        ESP_LOGI("main", "Attempting to load cached data");
+        ESP_LOGI("main", "Using cached data only");
         if (DataCache::load(dashboardData)) {
             ESP_LOGI("main", "Loaded data from cache (age: %lu sec)",
                     DataCache::getAgeSeconds());
@@ -272,18 +278,9 @@ bool fetchWeatherData(DashboardData& data) {
         success = false;
     }
 
-    // Generate Gemini AI commentary (only if we have weather data)
-    if (data.weather.indoor.valid || data.weather.outdoor.valid) {
-        unsigned long timestamp = data.weather.timestamp > 0 ?
-            data.weather.timestamp : time(nullptr);
-
-        data.aiCommentary = geminiClient.generateCommentary(data.weather, timestamp);
-
-        if (data.aiCommentary.length() == 0) {
-            ESP_LOGW("main", "Gemini commentary failed - widget will be empty");
-        } else {
-            ESP_LOGI("main", "Gemini: %s", data.aiCommentary.c_str());
-        }
+    // Fetch sun data (sunrise/sunset)
+    if (!sunMoonClient.getSunData(data.sunData)) {
+        ESP_LOGW("main", "Failed to fetch sun data - using cached");
     }
 
     // Even if one API fails, we can still show partial data

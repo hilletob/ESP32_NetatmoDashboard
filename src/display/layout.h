@@ -23,7 +23,8 @@
 #define HUMID_CARD_HEIGHT 95       // Humidity cards
 #define AIR_QUALITY_CARD_HEIGHT 80 // CO2 card (no quality label)
 #define PRESSURE_CARD_HEIGHT 80    // Pressure card (no trend label)
-#define AI_CARD_HEIGHT 175         // AI commentary card
+#define SUN_CARD_HEIGHT 85         // Sun widget (sunrise/sunset)
+#define MOON_CARD_HEIGHT 82        // Moon widget (moonrise/moonset/phase)
 
 // Column positions
 // Math check: 8 + 256 + 8 + 256 + 8 + 256 + 8 = 800 ✓
@@ -73,7 +74,7 @@
 #define PRESSURE_Y ROW4_Y
 
 // ============================================================================
-// COLUMN 2: OUTDOOR SENSORS (Netatmo Outdoor + Wind/Rain Modules)
+// COLUMN 2: OUTDOOR SENSORS + SUN/MOON WIDGETS
 // ============================================================================
 #define OUTDOOR_TEMP_X COL2_X
 #define OUTDOOR_TEMP_Y ROW1_Y
@@ -81,6 +82,14 @@
 #define OUTDOOR_HUMID_X COL2_X
 #define OUTDOOR_HUMID_Y ROW2_Y
 
+// Sun/Moon widgets (replaces old Wind/Rain widgets)
+#define SUN_X COL2_X
+#define SUN_Y ROW3_Y
+
+#define MOON_X COL2_X
+#define MOON_Y ROW4_Y
+
+// Legacy positions (deprecated, kept for compatibility)
 #define WIND_X COL2_X
 #define WIND_Y ROW3_Y
 

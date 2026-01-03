@@ -8,7 +8,9 @@
       "WebFetch(domain:api.met.no)",
       "WebSearch",
       "WebFetch(domain:docs.api.met.no)",
-      "WebFetch(domain:files.seeedstudio.com)"
+      "WebFetch(domain:files.seeedstudio.com)",
+      "Bash(grep:*)",
+      "Bash(cat:*)"
     ]
   }
 }

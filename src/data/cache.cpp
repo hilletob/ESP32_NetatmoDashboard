@@ -94,6 +94,22 @@ bool DataCache::save(const DashboardData& data) {
     doc["batteryMv"] = data.batteryVoltage;
     doc["batteryPct"] = data.batteryPercent;
 
+    // Sun data
+    JsonObject sun = doc["sunData"].to<JsonObject>();
+    sun["sunrise"] = data.sunData.sunriseTime;
+    sun["sunset"] = data.sunData.sunsetTime;
+    sun["solarNoon"] = data.sunData.solarNoonTime;
+    sun["sunriseAz"] = data.sunData.sunriseAzimuth;
+    sun["sunsetAz"] = data.sunData.sunsetAzimuth;
+    sun["valid"] = data.sunData.valid;
+
+    // Moon data
+    JsonObject moon = doc["moonData"].to<JsonObject>();
+    moon["moonrise"] = data.moonData.moonriseTime;
+    moon["moonset"] = data.moonData.moonsetTime;
+    moon["phase"] = data.moonData.moonPhase;
+    moon["valid"] = data.moonData.valid;
+
     // Write to file
     File file = LittleFS.open(CACHE_FILE, "w");
     if (!file) {
@@ -224,6 +240,22 @@ bool DataCache::load(DashboardData& data) {
     // Battery
     data.batteryVoltage = doc["batteryMv"] | 0;
     data.batteryPercent = doc["batteryPct"] | 0;
+
+    // Sun data
+    JsonObject sun = doc["sunData"];
+    data.sunData.sunriseTime = sun["sunrise"] | 0;
+    data.sunData.sunsetTime = sun["sunset"] | 0;
+    data.sunData.solarNoonTime = sun["solarNoon"] | 0;
+    data.sunData.sunriseAzimuth = sun["sunriseAz"] | 0.0f;
+    data.sunData.sunsetAzimuth = sun["sunsetAz"] | 0.0f;
+    data.sunData.valid = sun["valid"] | false;
+
+    // Moon data
+    JsonObject moon = doc["moonData"];
+    data.moonData.moonriseTime = moon["moonrise"] | 0;
+    data.moonData.moonsetTime = moon["moonset"] | 0;
+    data.moonData.moonPhase = moon["phase"] | 0.0f;
+    data.moonData.valid = moon["valid"] | false;
 
     ESP_LOGI("cache", "Cache loaded successfully");
     return true;

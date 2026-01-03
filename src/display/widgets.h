@@ -16,7 +16,9 @@ void drawIndoorCO2Widget(TFT_eSprite& display, const IndoorData& data);
 void drawOutdoorTempWidget(TFT_eSprite& display, const OutdoorData& data);
 void drawOutdoorHumidWidget(TFT_eSprite& display, const OutdoorData& data);
 
-void drawAIWidget(TFT_eSprite& display, const String& commentary);
+// Sun widgets (separate sunrise/sunset)
+void drawSunriseWidget(TFT_eSprite& display, const SunData& data);
+void drawSunsetWidget(TFT_eSprite& display, const SunData& data);
 
 void drawForecast3hWidget(TFT_eSprite& display, const ForecastPoint& forecast);
 void drawForecast6hWidget(TFT_eSprite& display, const ForecastPoint& forecast);

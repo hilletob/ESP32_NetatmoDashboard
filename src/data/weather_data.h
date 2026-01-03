@@ -139,16 +139,40 @@ struct ForecastData {
     ForecastData() {}
 };
 
-// Complete dashboard data (combination of Netatmo + MeteoSwiss + Gemini AI)
+// Sun data (sunrise/sunset from met.no Sunrise API)
+struct SunData {
+    unsigned long sunriseTime;      // Unix timestamp
+    unsigned long sunsetTime;       // Unix timestamp
+    unsigned long solarNoonTime;    // Unix timestamp (optional)
+    float sunriseAzimuth;           // 0-360 degrees
+    float sunsetAzimuth;            // 0-360 degrees
+    bool valid;                     // Data validity flag
+
+    SunData() : sunriseTime(0), sunsetTime(0), solarNoonTime(0),
+                sunriseAzimuth(0), sunsetAzimuth(0), valid(false) {}
+};
+
+// Moon data (moonrise/moonset/phase from met.no Sunrise API)
+struct MoonData {
+    unsigned long moonriseTime;     // Unix timestamp
+    unsigned long moonsetTime;      // Unix timestamp
+    float moonPhase;                // 0.0-1.0 (0=new, 0.25=first quarter, 0.5=full, 0.75=last quarter)
+    bool valid;                     // Data validity flag
+
+    MoonData() : moonriseTime(0), moonsetTime(0), moonPhase(0), valid(false) {}
+};
+
+// Complete dashboard data (combination of Netatmo + MeteoSwiss + Sun/Moon)
 struct DashboardData {
     WeatherData weather;
     ForecastData forecast;
+    SunData sunData;            // Sun data (sunrise/sunset)
+    MoonData moonData;          // Moon data (moonrise/moonset/phase)
     uint32_t batteryVoltage;    // mV
     uint8_t batteryPercent;     // %
     unsigned long updateTime;   // Unix timestamp of dashboard update
-    String aiCommentary;        // Gemini AI weather commentary
 
-    DashboardData() : batteryVoltage(0), batteryPercent(0), updateTime(0), aiCommentary("") {}
+    DashboardData() : batteryVoltage(0), batteryPercent(0), updateTime(0) {}
 };
 
 // Helper function to convert trend string to enum

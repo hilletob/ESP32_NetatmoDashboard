@@ -567,56 +567,255 @@ void drawForecast6hWidget(TFT_eSprite& display, const ForecastPoint& forecast) {
     // No longer used in 3-column layout
 }
 
-void drawAIWidget(TFT_eSprite& display, const String& commentary) {
-    // Position: WIND_X=272, WIND_Y=279
-    // Size: 256px × 175px
-    display.drawRect(WIND_X, WIND_Y, CARD_WIDTH, AI_CARD_HEIGHT, TFT_BLACK);
+// Helper: Draw moon phase visual
+void drawMoonPhase(TFT_eSprite& display, int x, int y, float phase, int size) {
+    // Moon phase: 0.0-1.0
+    // 0.0 = new moon (dark)
+    // 0.25 = first quarter (right half lit)
+    // 0.5 = full moon (fully lit)
+    // 0.75 = last quarter (left half lit)
+    // 1.0 = new moon again
 
-    // Empty widget if no commentary
-    if (commentary.length() == 0) return;
+    int radius = size / 2;
+    int cx = x + radius;
+    int cy = y + radius;
 
-    // Text area: 244px wide × ~160px high (no label, starts from top)
-    int textX = WIND_X + CARD_PADDING;
-    int textY = WIND_Y + CARD_PADDING + 8;  // Start near top of widget
+    // Draw outer circle (moon outline)
+    display.drawCircle(cx, cy, radius, TFT_BLACK);
+    display.drawCircle(cx, cy, radius - 1, TFT_BLACK);  // Thicker outline
 
+    // Fill moon based on phase
+    if (phase < 0.01) {
+        // New moon - fill entire circle (dark)
+        display.fillCircle(cx, cy, radius - 2, TFT_BLACK);
+    } else if (phase > 0.99) {
+        // New moon (cycle complete) - fill entire circle (dark)
+        display.fillCircle(cx, cy, radius - 2, TFT_BLACK);
+    } else if (phase > 0.48 && phase < 0.52) {
+        // Full moon - leave empty (white)
+        // Circle outline already drawn
+    } else if (phase < 0.5) {
+        // Waxing (0.0 to 0.5) - fill from right side
+        // Draw filled semi-circle on right, gradually revealing left
+        float fillRatio = phase * 2.0;  // 0.0 to 1.0
+        int fillWidth = radius * 2 * (1.0 - fillRatio);
+
+        // Fill right side gradually
+        for (int dy = -radius + 2; dy < radius - 2; dy++) {
+            int lineWidth = sqrt(radius * radius - dy * dy);
+            int startX = cx - (int)(lineWidth * (1.0 - fillRatio));
+            display.drawFastHLine(startX, cy + dy, cx + lineWidth - startX, TFT_BLACK);
+        }
+    } else {
+        // Waning (0.5 to 1.0) - fill from left side
+        // Gradually fill left side
+        float fillRatio = (phase - 0.5) * 2.0;  // 0.0 to 1.0
+        int fillWidth = radius * 2 * fillRatio;
+
+        // Fill left side gradually
+        for (int dy = -radius + 2; dy < radius - 2; dy++) {
+            int lineWidth = sqrt(radius * radius - dy * dy);
+            int endX = cx + (int)(lineWidth * (1.0 - fillRatio));
+            display.drawFastHLine(cx - lineWidth, cy + dy, endX - (cx - lineWidth), TFT_BLACK);
+        }
+    }
+}
+
+// Sun Widget: Combined sunrise/sunset in one widget (256×85px)
+// Sunrise Widget (256×82px)
+void drawSunriseWidget(TFT_eSprite& display, const SunData& data) {
+    // Draw card border
+    display.drawRect(SUN_X, SUN_Y, CARD_WIDTH, SUN_CARD_HEIGHT, TFT_BLACK);
+
+    if (!data.valid || data.sunriseTime == 0) {
+        // Label without date if invalid
+        display.setTextColor(TFT_BLACK, TFT_WHITE);
+        display.setTextDatum(TL_DATUM);
+        display.setFreeFont(FSS9);
+        display.drawString("Sonnenaufgang", SUN_X + CARD_PADDING, SUN_Y + CARD_LABEL_Y);
+
+        display.setFreeFont(FSSB18);
+        display.drawString("n/a", SUN_X + CARD_PADDING, SUN_Y + CARD_VALUE_Y);
+        return;
+    }
+
+    // Extract time and date
+    struct tm sunriseTm_buf;
+    struct tm* sunriseTm = localtime((time_t*)&data.sunriseTime);
+    if (sunriseTm) sunriseTm_buf = *sunriseTm;
+
+    // Label "Sonnenaufgang dd.mm.yyyy"
+    char labelStr[32];
+    snprintf(labelStr, sizeof(labelStr), "Sonnenaufgang %02d.%02d.%04d",
+             sunriseTm_buf.tm_mday, sunriseTm_buf.tm_mon + 1, sunriseTm_buf.tm_year + 1900);
     display.setTextColor(TFT_BLACK, TFT_WHITE);
     display.setTextDatum(TL_DATUM);
     display.setFreeFont(FSS9);
-    int maxWidth = CARD_WIDTH - (CARD_PADDING * 2);
-    int lineHeight = 20;  // FSS9 with extra spacing
+    display.drawString(labelStr, SUN_X + CARD_PADDING, SUN_Y + CARD_LABEL_Y);
 
-    // Simple word wrapping algorithm
-    String remaining = commentary;
-    int currentY = textY;
+    // Vertical up arrow for sunrise (similar to trend arrows)
+    int arrowX = SUN_X + CARD_PADDING + 12;
+    int arrowY = SUN_Y + 35;
+    int cx = arrowX;
+    int cy = arrowY;
+    // Shaft (vertical line, thicker)
+    display.drawLine(cx, cy + 6, cx, cy - 6, TFT_BLACK);
+    display.drawLine(cx - 1, cy + 6, cx - 1, cy - 6, TFT_BLACK);
+    display.drawLine(cx + 1, cy + 6, cx + 1, cy - 6, TFT_BLACK);
+    // Arrowhead (pointing up)
+    display.fillTriangle(cx, cy - 6,
+                        cx - 4, cy - 2,
+                        cx + 4, cy - 2, TFT_BLACK);
 
-    while (remaining.length() > 0 && currentY + lineHeight < WIND_Y + AI_CARD_HEIGHT - 6) {
-        // Find longest substring that fits in maxWidth
-        int fitLength = remaining.length();
-        for (int i = 1; i <= remaining.length(); i++) {
-            if (display.textWidth(remaining.substring(0, i)) > maxWidth) {
-                fitLength = i - 1;
-                break;
-            }
-        }
+    // Sunrise time (bold, large, left-aligned)
+    char timeStr[6];
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d", sunriseTm_buf.tm_hour, sunriseTm_buf.tm_min);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSSB18);
+    display.drawString(timeStr, arrowX + 20, SUN_Y + 25);
 
-        // Try to break at word boundary
-        String line;
-        if (fitLength < remaining.length()) {
-            int lastSpace = remaining.lastIndexOf(' ', fitLength);
-            if (lastSpace > 0 && lastSpace > fitLength - 20) {
-                line = remaining.substring(0, lastSpace);
-                remaining = remaining.substring(lastSpace + 1);
-            } else {
-                line = remaining.substring(0, fitLength);
-                remaining = remaining.substring(fitLength);
-            }
-        } else {
-            line = remaining;
-            remaining = "";
-        }
+    // Azimuth (small)
+    char azStr[16];
+    snprintf(azStr, sizeof(azStr), "Azimut: %.0f", data.sunriseAzimuth);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString(azStr, SUN_X + CARD_PADDING, SUN_Y + 62);
+}
 
-        display.drawString(line, textX, currentY);
-        currentY += lineHeight;
+// Sunset Widget (256×82px)
+void drawSunsetWidget(TFT_eSprite& display, const SunData& data) {
+    // Draw card border
+    display.drawRect(MOON_X, MOON_Y, CARD_WIDTH, MOON_CARD_HEIGHT, TFT_BLACK);
+
+    if (!data.valid || data.sunsetTime == 0) {
+        // Label without date if invalid
+        display.setTextColor(TFT_BLACK, TFT_WHITE);
+        display.setTextDatum(TL_DATUM);
+        display.setFreeFont(FSS9);
+        display.drawString("Sonnenuntergang", MOON_X + CARD_PADDING, MOON_Y + CARD_LABEL_Y);
+
+        display.setFreeFont(FSSB18);
+        display.drawString("n/a", MOON_X + CARD_PADDING, MOON_Y + CARD_VALUE_Y);
+        return;
+    }
+
+    // Extract time and date
+    struct tm sunsetTm_buf;
+    struct tm* sunsetTm = localtime((time_t*)&data.sunsetTime);
+    if (sunsetTm) sunsetTm_buf = *sunsetTm;
+
+    // Label "Sonnenuntergang dd.mm.yyyy"
+    char labelStr[32];
+    snprintf(labelStr, sizeof(labelStr), "Sonnenuntergang %02d.%02d.%04d",
+             sunsetTm_buf.tm_mday, sunsetTm_buf.tm_mon + 1, sunsetTm_buf.tm_year + 1900);
+    display.setTextColor(TFT_BLACK, TFT_WHITE);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString(labelStr, MOON_X + CARD_PADDING, MOON_Y + CARD_LABEL_Y);
+
+    // Vertical down arrow for sunset (similar to trend arrows)
+    int arrowX = MOON_X + CARD_PADDING + 12;
+    int arrowY = MOON_Y + 35;
+    int cx = arrowX;
+    int cy = arrowY;
+    // Shaft (vertical line, thicker)
+    display.drawLine(cx, cy - 6, cx, cy + 6, TFT_BLACK);
+    display.drawLine(cx - 1, cy - 6, cx - 1, cy + 6, TFT_BLACK);
+    display.drawLine(cx + 1, cy - 6, cx + 1, cy + 6, TFT_BLACK);
+    // Arrowhead (pointing down)
+    display.fillTriangle(cx, cy + 6,
+                        cx - 4, cy + 2,
+                        cx + 4, cy + 2, TFT_BLACK);
+
+    // Sunset time (bold, large, left-aligned)
+    char timeStr[6];
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d", sunsetTm_buf.tm_hour, sunsetTm_buf.tm_min);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSSB18);
+    display.drawString(timeStr, arrowX + 20, MOON_Y + 25);
+
+    // Azimuth (small)
+    char azStr[16];
+    snprintf(azStr, sizeof(azStr), "Azimut: %.0f", data.sunsetAzimuth);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString(azStr, MOON_X + CARD_PADDING, MOON_Y + 62);
+}
+
+// Moon Widget: Visual phase + moonrise/moonset (256×82px)
+void drawMoonWidget(TFT_eSprite& display, const MoonData& data) {
+    // Draw card border
+    display.drawRect(MOON_X, MOON_Y, CARD_WIDTH, MOON_CARD_HEIGHT, TFT_BLACK);
+
+    // Label "MOND"
+    display.setTextColor(TFT_BLACK, TFT_WHITE);
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString("MOND", MOON_X + CARD_PADDING, MOON_Y + CARD_LABEL_Y);
+
+    if (!data.valid) {
+        display.setFreeFont(FSSB18);
+        display.drawString("n/a", MOON_X + CARD_PADDING, MOON_Y + CARD_VALUE_Y);
+        return;
+    }
+
+    // Moon phase percentage (top-right)
+    char phaseStr[16];
+    snprintf(phaseStr, sizeof(phaseStr), "Phase: %d%%", (int)(data.moonPhase * 100));
+    display.setTextDatum(TR_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString(phaseStr, MOON_X + CARD_WIDTH - CARD_PADDING, MOON_Y + CARD_LABEL_Y);
+
+    // Moon phase visual (40×40px on left)
+    int moonIconX = MOON_X + CARD_PADDING;
+    int moonIconY = MOON_Y + 28;
+    drawMoonPhase(display, moonIconX, moonIconY, data.moonPhase, 40);
+
+    // Moonrise time (center-left with ↑ arrow)
+    int riseX = MOON_X + 60;
+    int riseY = MOON_Y + 32;
+
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString("Aufgang", riseX, riseY);
+
+    struct tm moonriseTm_buf, moonsetTm_buf;  // Buffers for localtime() copies
+    if (data.moonriseTime > 0) {
+        struct tm* moonriseTm = localtime((time_t*)&data.moonriseTime);
+        if (moonriseTm) moonriseTm_buf = *moonriseTm;  // Copy to local buffer
+        char timeStr[6];
+        snprintf(timeStr, sizeof(timeStr), "%02d:%02d", moonriseTm_buf.tm_hour, moonriseTm_buf.tm_min);
+        display.setFreeFont(FSSB12);
+        display.drawString(timeStr, riseX, riseY + 16);
+
+        // Up arrow
+        display.drawString("^", riseX - 12, riseY + 16);
+    } else {
+        display.setFreeFont(FSSB12);
+        display.drawString("--:--", riseX, riseY + 16);
+    }
+
+    // Moonset time (center-right with ↓ arrow)
+    int setX = MOON_X + 160;
+    int setY = MOON_Y + 32;
+
+    display.setTextDatum(TL_DATUM);
+    display.setFreeFont(FSS9);
+    display.drawString("Untergang", setX, setY);
+
+    if (data.moonsetTime > 0) {
+        struct tm* moonsetTm = localtime((time_t*)&data.moonsetTime);
+        if (moonsetTm) moonsetTm_buf = *moonsetTm;  // Copy to local buffer
+        char timeStr[6];
+        snprintf(timeStr, sizeof(timeStr), "%02d:%02d", moonsetTm_buf.tm_hour, moonsetTm_buf.tm_min);
+        display.setFreeFont(FSSB12);
+        display.drawString(timeStr, setX, setY + 16);
+
+        // Down arrow
+        display.drawString("v", setX - 12, setY + 16);
+    } else {
+        display.setFreeFont(FSSB12);
+        display.drawString("--:--", setX, setY + 16);
     }
 }
 
@@ -818,10 +1017,11 @@ void drawDashboard(TFT_eSprite& display, const DashboardData& data) {
     drawAirQualityWidget(display, data.weather.indoor);
     drawPressureWidget(display, data.weather.indoor);
 
-    // COLUMN 2: OUTDOOR SENSORS + AI WIDGET
+    // COLUMN 2: OUTDOOR SENSORS + SUN WIDGETS
     drawOutdoorTempWidget(display, data.weather.outdoor);
     drawOutdoorHumidWidget(display, data.weather.outdoor);
-    drawAIWidget(display, data.aiCommentary);
+    drawSunriseWidget(display, data.sunData);
+    drawSunsetWidget(display, data.sunData);
 
     // COLUMN 3: 3-DAY FORECAST
     draw3DayForecastColumn(display, data.forecast);
