@@ -44,14 +44,14 @@ String GeminiClient::buildPrompt(const WeatherData& weather, unsigned long times
     prompt += "- Der Timestamp darf fuer Vermutungen bezüglich Feiertagen genutzt werden\n";
 
     // 50% chance to include the "Vater am Lüften" hint (only if CO2 > 1500 ppm)
-    if (weather.indoor.valid && weather.indoor.co2 > 1500 && random(2) == 0) {
-        prompt += "- Die Luftqualität ist schlecht und je nach Trend hat Vater soeben gelüftet oder wird dies demnächst vornehmen\n";
-    }
+    //if (weather.indoor.valid && weather.indoor.co2 > 1500 && random(2) == 0) {
+    //    prompt += "- Die Luftqualität ist schlecht und je nach Trend hat Vater soeben gelüftet oder wird dies demnächst vornehmen\n";
+    //}
 
     // 50% chance to include the "Ofen" hint (only if temp < 20°C)
-    if (weather.indoor.valid && weather.indoor.temperature < 20.0 && random(2) == 0) {
-        prompt += "- Falls die Innentemperatur unter 20°C ist, erwähne dass der Ofen wohl noch etwas eingefeuert werden muss\n";
-    }
+    //if (weather.indoor.valid && weather.indoor.temperature < 20.0 && random(2) == 0) {
+    //    prompt += "- Falls die Innentemperatur unter 20°C ist, erwähne dass der Ofen wohl noch etwas eingefeuert werden muss\n";
+    //}
 
     if (random(50) == 0) {
         prompt += "- Du bist eine Katze und machst Miau Miau\n";

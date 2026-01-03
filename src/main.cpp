@@ -225,6 +225,10 @@ bool syncTime() {
     // Configure NTP servers (timezone is already set in setup())
     configTime(0, 0, NTP_SERVER_1, NTP_SERVER_2);
 
+    // CRITICAL: Re-apply timezone after configTime() as it resets timezone to UTC
+    setenv("TZ", "CET-1CEST,M3.5.0,M10.5.0/3", 1);
+    tzset();
+
     // Wait for time sync (max 15 seconds)
     int retries = 30;
     while (retries > 0) {
