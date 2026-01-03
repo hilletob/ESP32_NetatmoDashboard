@@ -287,10 +287,15 @@ bool MeteoClient::getForecast(ForecastData& data) {
             }
 
             // Collect day-time data points (3 times: 06:00, 12:00, 18:00)
+            // IMPORTANT: Map hours to fixed array indices to keep positions consistent
             struct tm* entryTm = localtime(&entryTime);
-            if ((entryTm->tm_hour == 6 || entryTm->tm_hour == 12 || entryTm->tm_hour == 18)
-                && hourlyIdx < 3) {
-                DayTimeForecast& dtf = dailyForecast.times[hourlyIdx];
+            int timeSlotIdx = -1;
+            if (entryTm->tm_hour == 6) timeSlotIdx = 0;
+            else if (entryTm->tm_hour == 12) timeSlotIdx = 1;
+            else if (entryTm->tm_hour == 18) timeSlotIdx = 2;
+
+            if (timeSlotIdx >= 0) {
+                DayTimeForecast& dtf = dailyForecast.times[timeSlotIdx];
                 dtf.hour = entryTm->tm_hour;
                 dtf.temperature = (int8_t)temp;
 
@@ -306,7 +311,7 @@ bool MeteoClient::getForecast(ForecastData& data) {
                     dtf.precipitationMm = 0;
                 }
 
-                hourlyIdx++;
+                hourlyIdx++;  // Still count for logging
             }
         }
 
