@@ -167,12 +167,6 @@ bool SunMoonClient::fetchSunDataForDay(int dayOffset, unsigned long& sunriseTime
 // Get sun data (sunrise/sunset) from met.no API
 // Shows NEXT sunrise and NEXT sunset (may be tomorrow if already passed today)
 bool SunMoonClient::getSunData(SunData& data) {
-    // Only fetch if date changed
-    if (!needsUpdate()) {
-        ESP_LOGI("sunmoon", "Sun data still valid for today (already in cache)");
-        return true;  // Cached data is still valid, don't update
-    }
-
     ESP_LOGI("sunmoon", "Fetching sun data from met.no API");
 
     time_t now = time(nullptr);

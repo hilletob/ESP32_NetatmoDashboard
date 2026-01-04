@@ -279,8 +279,13 @@ bool fetchWeatherData(DashboardData& data) {
     }
 
     // Fetch sun data (sunrise/sunset)
+    // CRITICAL: Preserve cached sun data if fetch fails
+    SunData cachedSunData = data.sunData;  // Backup cached data
     if (!sunMoonClient.getSunData(data.sunData)) {
         ESP_LOGW("main", "Failed to fetch sun data - using cached");
+        data.sunData = cachedSunData;  // Restore cached data
+    } else {
+        ESP_LOGI("main", "Sun data fetched successfully");
     }
 
     // Even if one API fails, we can still show partial data
